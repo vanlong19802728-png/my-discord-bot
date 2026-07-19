@@ -1,7 +1,6 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const http = require('http');
 
-// Tạo một server đơn giản để UptimeRobot có thể ping
 const server = http.createServer((req, res) => {
     res.writeHead(200);
     res.end('Bot is awake!');
@@ -40,13 +39,13 @@ const fishData = [
 ];
 
 client.once('ready', () => {
-    console.log(`✅ Bot đã kết nối thành công: ${client.user.tag}!`);
+    console.log(`✅ Bot đã kết nối: ${client.user.tag}!`);
 });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
     const uid = message.author.id;
-    if (!inventory[uid]) inventory[uid] = { money: 1000, rod: "Cần Tre", fishes: {} };
+    if (!inventory[uid]) inventory[uid] = { money: 1000, cash: 0, rod: "Cần Tre", fishes: {} };
 
     if (message.content === '!cauca') {
         const rod = shopItems.find(i => i.name === inventory[uid].rod);
@@ -55,40 +54,68 @@ client.on('messageCreate', async (message) => {
             const weather = weatherList[Math.floor(Math.random() * weatherList.length)];
             const possibleFish = fishData.filter(f => f.weather === weather);
             const fish = possibleFish.length > 0 ? possibleFish[Math.floor(Math.random() * possibleFish.length)] : fishData[0];
-            
             inventory[uid].fishes[fish.name] = (inventory[uid].fishes[fish.name] || 0) + 1;
             
             const embed = new EmbedBuilder()
                 .setTitle("🎣 Kéo cần thành công!")
                 .setColor(fish.color)
-                .setDescription(`Bạn đã bắt được **${fish.name}** trong thời tiết ${weather}!`)
-                .addFields(
-                    { name: "✨ Hiếm", value: fish.rarity, inline: true },
-                    { name: "📏 Size", value: fish.size, inline: true },
-                    { name: "💰 Giá", value: `${fish.price} xu`, inline: true }
-                );
+                .setDescription(`Bạn đã bắt được **${fish.name}**!`)
+                .addFields({ name: "💰 Giá", value: `${fish.price} xu`, inline: true });
             message.reply({ embeds: [embed] });
-        } else message.reply("💨 Bạn đã vụt mất con cá... Cần câu yếu quá rồi!");
+        } else message.reply("💨 Bạn đã vụt mất con cá...");
     }
 
     if (message.content === '!shop') {
-        const embed = new EmbedBuilder().setTitle("🏪 Cửa Hàng").setDescription(shopItems.map(i => `**${i.name}** (${i.price} xu) - ${i.desc}`).join('\n'));
+        const embed = new EmbedBuilder().setTitle("🏪 Cửa Hàng").setDescription(shopItems.map(i => `**${i.name}** (${i.price} xu)`).join('\n'));
         message.reply({ embeds: [embed] });
     }
 
     if (message.content.startsWith('!buy ')) {
-        const itemName = message.content.substring(5).trim();
-        const item = shopItems.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+        const name = message.content.substring(5).trim();
+        const item = shopItems.find(i => i.name.toLowerCase() === name.toLowerCase());
         if (item && inventory[uid].money >= item.price) {
             inventory[uid].money -= item.price;
             inventory[uid].rod = item.name;
             message.reply(`✅ Đã mua ${item.name}!`);
-        } else message.reply("❌ Không đủ tiền hoặc vật phẩm không tồn tại!");
+        } else message.reply("❌ Không đủ tiền hoặc sai tên!");
     }
 
     if (message.content === '!inv') {
         const fishList = Object.entries(inventory[uid].fishes).map(([n, c]) => `${n}: x${c}`).join('\n') || "Trống";
-        const embed = new EmbedBuilder().setTitle(`🎒 ${message.author.username}`).setDescription(`💰 Xu: ${inventory[uid].money}\n🎣 Cần: ${inventory[uid].rod}\n\n**Cá:**\n${fishList}`);
+        const embed = new EmbedBuilder().setTitle(`🎒 ${message.author.username}`).setDescription(`💰 Xu: ${inventory[uid].money}\n💎 Cash: ${inventory[uid].cash}\n🎣 Cần: ${inventory[uid].rod}\n\n**Cá:**\n${fishList}`);
         message.reply({ embeds: [embed] });
+    }
+
+    if (message.content === '!sell') {
+        let total = 0;
+        for (const [name, count] of Object.entries(inventory[uid].fishes)) {
+            const fish = fishData.find(f => f.name === name);
+            if (fish) total += fish.price * count;
+        }
+        if (total > 0) {
+            inventory[uid].money += total;
+            inventory[uid].fishes = {};
+            message.reply(`✅ Đã bán cá, thu về ${total} xu!`);
+        } else message.reply("❌ Bạn không có cá!");
+    }
+
+    if (message.content.startsWith('!chuyen ')) {
+        const args = message.content.split(' ');
+        const amount = parseInt(args[1]);
+        const target = message.mentions.users.first();
+        if (target && amount > 0 && inventory[uid].money >= amount) {
+            inventory[uid].money -= amount;
+            if (!inventory[target.id]) inventory[target.id] = { money: 1000, cash: 0, rod: "Cần Tre", fishes: {} };
+            inventory[target.id].money += amount;
+            message.reply(`✅ Đã chuyển ${amount} xu cho ${target.username}!`);
+        } else message.reply("❌ Lỗi cú pháp hoặc không đủ tiền!");
+    }
+
+    if (message.content === '!convert') {
+        if (inventory[uid].money < 2) return message.reply("❌ Cần 2 xu để đổi!");
+        const cash = Math.floor(inventory[uid].money / 2);
+        inventory[uid].money -= (cash * 2);
+        inventory[uid].cash += cash;
+        message.reply(`✅ Đổi thành công, nhận được ${cash} cash!`);
     }
 });
