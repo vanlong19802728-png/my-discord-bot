@@ -1,9 +1,17 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const http = require('http');
+
+// Tạo một server đơn giản để UptimeRobot có thể ping
+const server = http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end('Bot is awake!');
+});
+server.listen(3000);
+
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
-// Chỉ để 1 dòng login duy nhất ở cuối file là được
 client.login(process.env.TOKEN);
 
 const inventory = {}; 
