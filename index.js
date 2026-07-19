@@ -3,6 +3,7 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
+// Chỉ để 1 dòng login duy nhất ở cuối file là được
 client.login(process.env.TOKEN);
 
 const inventory = {}; 
@@ -27,20 +28,11 @@ const fishData = [
     { name: "Cá Ngao", weather: "Bão", rarity: "Thường", size: "5cm", price: 30, color: 0xD3D3D3 },
     { name: "Cá Ma", weather: "Sương mù", rarity: "Siêu Hiếm", size: "20cm", price: 1500, color: 0x4B0082 },
     { name: "Cá Đèn", weather: "Sương mù", rarity: "Thường", size: "15cm", price: 90, color: 0xFFFF00 },
-    { name: "Cá Cầu Vồng", weather: "Cầu vồng", rarity: "SECRET", size: "8cm", price: 10000, color: 0xFF00FF },
-    { name: "Cá Kiếm", weather: "Nắng", rarity: "Hiếm", size: "120cm", price: 800, color: 0xC0C0C0 },
-    { name: "Cá Hổ", weather: "Bão", rarity: "Hiếm", size: "50cm", price: 700, color: 0xD2691E },
-    { name: "Cá Ngừ", weather: "Tuyết", rarity: "Hiếm", size: "100cm", price: 900, color: 0x4682B4 },
-    { name: "Cá Hề", weather: "Nắng", rarity: "Thường", size: "12cm", price: 70, color: 0xFF4500 },
-    { name: "Cá Lóc", weather: "Mưa", rarity: "Hiếm", size: "45cm", price: 400, color: 0x556B2F },
-    { name: "Cá Trắm", weather: "Mưa", rarity: "Thường", size: "35cm", price: 120, color: 0xA9A9A9 },
-    { name: "Cá Hồi", weather: "Tuyết", rarity: "Hiếm", size: "55cm", price: 600, color: 0xFF6347 },
-    { name: "Cá Bóng Đêm", weather: "Sương mù", rarity: "Hiếm", size: "20cm", price: 550, color: 0x000000 },
-    { name: "Cá Trê Bạc", weather: "Sương mù", rarity: "Hiếm", size: "25cm", price: 450, color: 0x708090 }
+    { name: "Cá Cầu Vồng", weather: "Cầu vồng", rarity: "SECRET", size: "8cm", price: 10000, color: 0xFF00FF }
 ];
 
 client.once('ready', () => {
-    console.log(`✅ Bot đã kết nối thành công với tên: ${client.user.tag}!`);
+    console.log(`✅ Bot đã kết nối thành công: ${client.user.tag}!`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -48,7 +40,6 @@ client.on('messageCreate', async (message) => {
     const uid = message.author.id;
     if (!inventory[uid]) inventory[uid] = { money: 1000, rod: "Cần Tre", fishes: {} };
 
-    // Lệnh !cauca
     if (message.content === '!cauca') {
         const rod = shopItems.find(i => i.name === inventory[uid].rod);
         if (Math.random() > (0.5 - rod.bonus)) {
@@ -78,12 +69,13 @@ client.on('messageCreate', async (message) => {
     }
 
     if (message.content.startsWith('!buy ')) {
-        const item = shopItems.find(i => i.name.toLowerCase() === message.content.split(' ')[1].toLowerCase());
+        const itemName = message.content.substring(5).trim();
+        const item = shopItems.find(i => i.name.toLowerCase() === itemName.toLowerCase());
         if (item && inventory[uid].money >= item.price) {
             inventory[uid].money -= item.price;
             inventory[uid].rod = item.name;
             message.reply(`✅ Đã mua ${item.name}!`);
-        } else message.reply("❌ Không đủ tiền!");
+        } else message.reply("❌ Không đủ tiền hoặc vật phẩm không tồn tại!");
     }
 
     if (message.content === '!inv') {
@@ -91,14 +83,4 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder().setTitle(`🎒 ${message.author.username}`).setDescription(`💰 Xu: ${inventory[uid].money}\n🎣 Cần: ${inventory[uid].rod}\n\n**Cá:**\n${fishList}`);
         message.reply({ embeds: [embed] });
     }
-
-    if (message.content.startsWith('!convert ')) {
-        const amount = parseInt(message.content.split(' ')[1]);
-        if (amount && inventory[uid].money >= amount) {
-            inventory[uid].money -= amount;
-            message.reply(`✅ Đã gửi yêu cầu đổi ${amount} xu.`);
-        } else message.reply("❌ Không đủ tiền!");
-    }
 });
-
-client.login(TOKEN);
